@@ -1,0 +1,57 @@
+#!/bin/sh
+
+exec 3>&1
+
+stdin=`cat /dev/stdin`
+logFileName=$(echo "$stdin" | jq -r ".logFile")
+jsonHookCommand=$(echo "$stdin" | jq -rc ".hook$CNI_COMMAND")
+
+if [[ $logFileName == "null" ]]; then
+    logfile=/dev/null # no logfile: do not log
+else
+    logfile=$(eval echo ${logFileName})
+fi
+
+exec &>> $logfile
+
+echo
+date -R
+cat << EOF
+CNI_COMMAND: $CNI_COMMAND
+CNI_CONTAINERID: $CNI_CONTAINERID
+CNI_NETNS: $CNI_NETNS
+CNI_ARGS: $CNI_ARGS
+CNI_PATH: $CNI_PATH
+EOF
+echo "$stdin" | jq
+
+if [[ "$jsonHookCommand" != "null" ]]; then
+    echo "Executing hook $CNI_COMMAND comands:"
+
+    echo $jsonHookCommand | jq -c '.[]' | xargs -i sh -c 'echo COMMAND: {}; {}'
+else
+    echo No $CNI_COMMAND hook
+fi
+
+case $CNI_COMMAND in
+    ADD)
+        echo $stdin |  jq -r ".prevResult" >&3
+    ;;
+
+    DEL)
+        exit 0
+    ;;
+
+    CHECK)
+	    exit 0 
+    ;;
+
+    VERSION)
+        echo '{"cniVersion": "0.4.0", "supportedVersions": [ "0.4.0" ]}' >&3
+    ;;
+
+    *)
+        echo "Unknown CNI command: $CNI_COMMAND"
+        exit 1
+    ;;
+esac
