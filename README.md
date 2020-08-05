@@ -74,7 +74,9 @@ $ sudo CNI_PATH=./bin NETCONFPATH=./conf cnitool del testing-net /var/run/netns/
 $ sudo ip netns del testing
 ```
 
-## Using the plugin with podman
+## Using the passthrough plugin with podman
+
+**NOTE:** rootless podman do not use CNI to plumb the container networking, that's why podman should be executed as root here
 
 1) put the plugin into the cni plugin folder (you can find the folder checking the `cni_plugin_dir` parameter in `/usr/share/containers/libpod.conf` or `/etc/containers/libpod.conf`:
 ```
@@ -136,11 +138,10 @@ cat /etc/cni/net.d/87-podman-bridge.conflist
 ```
 
 3) create a pod attached to the CNI network mapping the port `8080` on the host.
-**NOTE:** rootless podman do not use CNI to plumb the container networking, that's why podman should be executed as root here
 
 ```
 # podman pod create -p 8080:8080 -n test
-``
+```
 
 4) spawn a container listeining on the port `8080` into the `test` pod:
 ```
